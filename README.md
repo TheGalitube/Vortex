@@ -26,11 +26,12 @@ Ein moderner, schneller und minimalistischer Webbrowser mit dunklem Design, entw
 - Python 3.6 oder höher
 - PyQt5
 - PyQtWebEngine
+- QtAwesome
 
 ### Abhängigkeiten installieren
 
 ```bash
-pip install PyQt5 PyQtWebEngine
+pip install PyQt5 PyQtWebEngine qtawesome
 ```
 
 ### Den Browser starten
