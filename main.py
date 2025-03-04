@@ -11,296 +11,334 @@ import json
 import qtawesome as qta
 import base64
 
-# Suchmaschinen-Presets
+# Windows-spezifische Importe für Darkmode-Titelleiste
+if sys.platform == 'win32':
+    from PyQt5.QtWinExtras import QtWin
+    import ctypes
+
+# Suchmaschinen-Konfiguration
 SEARCH_ENGINES = {
-    "Google": "https://www.google.com/search?q={}",
-    "Bing": "https://www.bing.com/search?q={}",
-    "DuckDuckGo": "https://duckduckgo.com/?q={}",
-    "Ecosia": "https://www.ecosia.org/search?q={}",
-    "Qwant": "https://www.qwant.com/?q={}"
+    "Google": "https://www.google.com/search?q={query}",
+    "Bing": "https://www.bing.com/search?q={query}",
+    "DuckDuckGo": "https://duckduckgo.com/?q={query}",
+    "Yahoo": "https://search.yahoo.com/search?p={query}",
+    "Ecosia": "https://www.ecosia.org/search?q={query}",
+    "Startpage": "https://www.startpage.com/do/search?q={query}",
+    "Qwant": "https://www.qwant.com/?q={query}"
 }
 
-# Standard angepinnte Seiten
+# Standard-Favoriten
 DEFAULT_PINNED_SITES = [
-    {"title": "Google", "url": "https://www.google.com", "icon": "fa5s.search"},
-    {"title": "YouTube", "url": "https://www.youtube.com", "icon": "fa5b.youtube"},
-    {"title": "Wikipedia", "url": "https://www.wikipedia.org", "icon": "fa5b.wikipedia-w"},
-    {"title": "GitHub", "url": "https://www.github.com", "icon": "fa5b.github"}
+    {"title": "Google", "url": "https://www.google.com"},
+    {"title": "YouTube", "url": "https://www.youtube.com"},
+    {"title": "GitHub", "url": "https://github.com"},
+    {"title": "Wikipedia", "url": "https://www.wikipedia.org"},
+    {"title": "Reddit", "url": "https://www.reddit.com"}
 ]
 
 # Moderner Chrome User-Agent
 MODERN_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
-# New Tab HTML Template
-NEW_TAB_HTML = """<!DOCTYPE html>
+# HTML-Template für die Neue-Tab-Seite
+NEW_TAB_HTML = """
+<!DOCTYPE html>
 <html>
 <head>
-    <title>Neue Registerkarte</title>
+    <title>Neuer Tab</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {{
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #202124;
+            color: #e8eaed;
             margin: 0;
-            padding: 0;
-            background-color: #2c2c2c;
-            color: #ffffff;
-            text-align: center;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }}
-        .container {{
-            width: 80%;
-            margin: 0 auto;
-            padding-top: 100px;
-        }}
-        .search-box {{
+        
+        .search-container {{
+            margin: 100px 0 40px 0;
             width: 100%;
             max-width: 600px;
-            margin: 0 auto 40px;
-            position: relative;
+            text-align: center;
         }}
-        .search-input {{
+        
+        .search-bar {{
             width: 100%;
-            padding: 15px 20px;
-            border-radius: 30px;
-            border: none;
-            background-color: #404040;
-            color: white;
+            padding: 12px 20px;
+            margin: 8px 0;
+            box-sizing: border-box;
+            border: 1px solid #5f6368;
+            border-radius: 24px;
+            background-color: #303134;
+            color: #e8eaed;
             font-size: 16px;
             outline: none;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
         }}
-        .search-engine {{
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #aaa;
-            font-size: 14px;
-            background: none;
-            border: none;
+        
+        .search-bar:focus {{
+            border-color: #8ab4f8;
+            background-color: #303134;
         }}
-        .pinned-sites {{
+        
+        .sites-container {{
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            margin-top: 40px;
-            gap: 20px;
+            gap: 16px;
+            margin-top: 30px;
+            width: 100%;
+            max-width: 800px;
         }}
+        
         .site-tile {{
-            width: 120px;
-            height: 120px;
-            background-color: #333;
-            border-radius: 10px;
+            position: relative;
+            width: 110px;
+            height: 110px;
+            background-color: #303134;
+            border-radius: 8px;
             display: flex;
             flex-direction: column;
-            justify-content: center;
             align-items: center;
-            cursor: pointer;
-            transition: background-color 0.2s, transform 0.2s;
+            justify-content: center;
             text-decoration: none;
-            color: white;
-            position: relative;
+            color: #e8eaed;
+            transition: background-color 0.2s;
         }}
+        
         .site-tile:hover {{
-            background-color: #404040;
-            transform: translateY(-5px);
+            background-color: #3c4043;
         }}
+        
+        .site-link {{
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            color: #e8eaed;
+            width: 100%;
+            height: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+        }}
+        
         .site-icon {{
-            font-size: 32px;
-            margin-bottom: 10px;
-            color: #42a5f5;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background-color: #5f6368;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 8px;
+            font-size: 24px;
         }}
+        
+        .site-icon img {{
+            width: 24px;
+            height: 24px;
+        }}
+        
         .site-title {{
-            font-size: 14px;
+            font-size: 12px;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
         }}
-        .add-site {{
-            border: 2px dashed #555;
-            background-color: transparent;
-        }}
-        .add-site:hover {{
-            border-color: #42a5f5;
-            background-color: #353535;
-        }}
-        .add-icon {{
-            font-size: 32px;
-            color: #555;
-        }}
-        .add-site:hover .add-icon {{
-            color: #42a5f5;
-        }}
-        .logo {{
-            margin-bottom: 40px;
-            font-size: 32px;
-            font-weight: bold;
-            color: #42a5f5;
-        }}
-        .unpin {{
+        
+        .unpin-button {{
             position: absolute;
             top: 5px;
             right: 5px;
-            background: rgba(0, 0, 0, 0.5);
-            color: #fff;
-            border: none;
-            border-radius: 50%;
             width: 20px;
             height: 20px;
-            font-size: 12px;
+            border-radius: 50%;
+            background-color: rgba(80, 80, 80, 0.7);
+            color: #e8eaed;
             display: flex;
             align-items: center;
             justify-content: center;
+            text-decoration: none;
+            font-size: 16px;
             opacity: 0;
             transition: opacity 0.2s;
         }}
-        .site-tile:hover .unpin {{
+        
+        .site-tile:hover .unpin-button {{
             opacity: 1;
         }}
+        
+        .unpin-button:hover {{
+            background-color: rgba(100, 100, 100, 0.9);
+        }}
     </style>
+    <!-- FontAwesome CDN für Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </head>
 <body>
-    <div class="container">
-        <div class="logo">Vortex</div>
-        
-        <div class="search-box">
-            <input type="text" class="search-input" placeholder="Suche oder URL eingeben..." autofocus id="search-input">
-            <span class="search-engine">{current_engine}</span>
-        </div>
-        
-        <div class="pinned-sites">
-            {pinned_sites}
-            
-            <div class="site-tile add-site" onclick="showAddSiteDialog()">
-                <div class="add-icon">+</div>
-                <div class="site-title">Seite hinzufügen</div>
-            </div>
-        </div>
+    <div class="search-container">
+        <form action="javascript:void(0);" onsubmit="submitSearch()">
+            <input type="text" class="search-bar" id="searchInput" placeholder="{search_input_placeholder}" autofocus>
+        </form>
     </div>
-
+    
+    <div class="sites-container">
+        {pinned_sites}
+    </div>
+    
     <script>
-        document.getElementById('search-input').addEventListener('keypress', function(e) {{
-            if (e.key === 'Enter') {{
-                const query = this.value.trim();
-                if (query) {{
-                    // Wenn es eine URL ist, direkt dorthin navigieren
-                    if (query.includes('.') && !query.includes(' ')) {{
-                        let url = query;
-                        if (!url.startsWith('http://') && !url.startsWith('https://')) {{
-                            url = 'http://' + url;
-                        }}
-                        window.location.href = url;
+        function submitSearch() {{
+            const input = document.getElementById('searchInput').value.trim();
+            if (input) {{
+                // Prüfe, ob es eine URL ist
+                if (input.includes('.') && !input.includes(' ')) {{
+                    // Füge http:// hinzu, wenn kein Protokoll angegeben ist
+                    if (!input.startsWith('http://') && !input.startsWith('https://')) {{
+                        window.location.href = 'http://' + input;
                     }} else {{
-                        // Sonst als Suchanfrage behandeln
-                        window.location.href = 'vortex://search?q=' + encodeURIComponent(query);
+                        window.location.href = input;
                     }}
-                }}
-            }}
-        }});
-
-        function showAddSiteDialog() {{
-            const title = prompt('Titel der Webseite:');
-            if (title) {{
-                const url = prompt('URL der Webseite (mit https://):');
-                if (url && url.trim().startsWith('http')) {{
-                    window.location.href = 'vortex://pin-site?title=' + encodeURIComponent(title) + '&url=' + encodeURIComponent(url);
                 }} else {{
-                    alert('Bitte gib eine gültige URL ein, die mit http:// oder https:// beginnt.');
+                    // Behandle es als Suchanfrage
+                    window.location.href = input;
                 }}
             }}
         }}
-
-        function unpinSite(url) {{
-            if (confirm('Möchtest du diese Seite wirklich entfernen?')) {{
-                window.location.href = 'vortex://unpin-site?url=' + encodeURIComponent(url);
-            }}
-        }}
+        
+        // Setze Fokus auf das Suchfeld
+        document.addEventListener('DOMContentLoaded', function() {{
+            document.getElementById('searchInput').focus();
+        }});
     </script>
 </body>
 </html>
 """
 
-# Settings-HTML Template
-SETTINGS_HTML = """<!DOCTYPE html>
+# HTML-Template für die Einstellungs-Seite
+SETTINGS_HTML = """
+<!DOCTYPE html>
 <html>
 <head>
-    <title>Vortex Einstellungen</title>
+    <title>Einstellungen</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {{
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #202124;
+            color: #e8eaed;
             margin: 0;
-            padding: 20px;
-            background-color: #2c2c2c;
-            color: #ffffff;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }}
+        
+        .settings-container {{
+            width: 100%;
+            max-width: 600px;
+        }}
+        
         h1 {{
-            color: #42a5f5;
-            border-bottom: 1px solid #444;
-            padding-bottom: 10px;
+            margin-bottom: 30px;
+            text-align: center;
+            color: #e8eaed;
         }}
-        .section {{
-            background-color: #333;
-            padding: 15px;
-            border-radius: 5px;
+        
+        .settings-section {{
+            background-color: #303134;
+            border-radius: 8px;
+            padding: 20px;
             margin-bottom: 20px;
         }}
-        h2 {{
-            margin-top: 0;
-            color: #fff;
+        
+        .settings-title {{
+            font-size: 18px;
+            font-weight: 500;
+            margin-bottom: 15px;
+            color: #e8eaed;
         }}
+        
         select {{
-            background-color: #444;
-            color: white;
-            padding: 8px;
             width: 100%;
-            border: none;
+            padding: 10px;
+            margin-bottom: 15px;
+            background-color: #202124;
+            color: #e8eaed;
+            border: 1px solid #5f6368;
             border-radius: 4px;
-            margin: 10px 0;
+            outline: none;
         }}
+        
+        select:focus {{
+            border-color: #8ab4f8;
+        }}
+        
         button {{
-            background-color: #42a5f5;
-            color: white;
-            padding: 8px 15px;
+            background-color: #8ab4f8;
+            color: #202124;
             border: none;
             border-radius: 4px;
+            padding: 10px 20px;
+            font-size: 14px;
             cursor: pointer;
+            transition: background-color 0.2s;
         }}
+        
         button:hover {{
-            background-color: #2196f3;
+            background-color: #aecbfa;
         }}
-        .current {{
-            margin-top: 10px;
-            font-style: italic;
-            color: #aaa;
+        
+        .info-text {{
+            font-size: 14px;
+            color: #9aa0a6;
+            margin-top: 20px;
         }}
     </style>
 </head>
 <body>
-    <h1>Vortex Browser Einstellungen</h1>
-    
-    <div class="section">
-        <h2>Suchmaschine</h2>
-        <p>Wähle deine Standard-Suchmaschine:</p>
-        <select id="search-engine">
-            {options}
-        </select>
-        <p class="current">Aktuelle Suchmaschine: <span id="current-engine">{current}</span></p>
-        <button onclick="saveSettings()">Speichern</button>
+    <div class="settings-container">
+        <h1>Vortex Browser Einstellungen</h1>
+        
+        <div class="settings-section">
+            <div class="settings-title">Suchmaschine</div>
+            <form action="vortex://save-settings" method="get">
+                <select name="engine">
+                    {options}
+                </select>
+                <button type="submit">Speichern</button>
+            </form>
+            <div class="info-text">
+                Aktuell ausgewählt: <strong>{current}</strong>
+            </div>
+        </div>
+        
+        <div class="settings-section">
+            <div class="settings-title">Über Vortex Browser</div>
+            <div class="info-text">
+                Version: 1.0.0<br>
+                Ein moderner, leichtgewichtiger Browser basierend auf QtWebEngine.
+            </div>
+        </div>
     </div>
-
-    <script>
-        function saveSettings() {{
-            const engine = document.getElementById('search-engine').value;
-            window.location.href = 'vortex://save-settings?engine=' + encodeURIComponent(engine);
-        }}
-    </script>
 </body>
 </html>
 """
 
 # Benutzerdefinierter Request-Interceptor für den User-Agent
 class CustomRequestInterceptor(QWebEngineUrlRequestInterceptor):
-    def interceptRequest(self, info):
-        info.setHttpHeader(b"User-Agent", MODERN_USER_AGENT.encode())
+    def __init__(self, parent=None):
+        super().__init__(parent)
         
-        # Erlaube alle Schriftarten-Ressourcen
-        if info.resourceType() == QWebEngineUrlRequestInfo.ResourceTypeFontResource:
-            info.setHttpHeader(b"Accept", b"*/*")
+    def interceptRequest(self, info):
+        # Setze einen benutzerdefinierten User-Agent
+        info.setHttpHeader(b"User-Agent", b"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Vortex/1.0.0")
 
 class CustomWebEnginePage(QWebEnginePage):
     def __init__(self, profile, parent=None):
@@ -374,88 +412,157 @@ class CustomWebEnginePage(QWebEnginePage):
 class Browser(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.browsers = []
         
-        # Lade Einstellungen oder setze Standardwerte
-        self.settings_file = os.path.join(os.path.expanduser("~"), ".vortex_settings.json")
-        self.loadSettings()
-        
-        # Setze Dark Mode
-        self.setDarkMode()
-        
-        # Erstelle ein optimiertes WebEngineProfile
-        self.setupWebEngineProfile()
-        
-        # Setze Fenstertitel und Größe
+        # Fenster-Eigenschaften
         self.setWindowTitle("Vortex Browser")
-        self.setGeometry(100, 100, 1200, 800)
+        # Entferne frameless window hint falls vorhanden
+        self.setWindowFlags(Qt.Window)  # Standard-Fenster mit Windows-Buttons
         
-        # Erstelle ein zentrales Widget
+        # Windows-Darkmode für Titelleiste aktivieren
+        if sys.platform == 'win32':
+            self.enableWindowsDarkMode()
+        
+        # Zentrale Widget
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
-        
-        # Layout für das zentrale Widget
         self.layout = QVBoxLayout(self.central_widget)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(0)
         
-        # Erstelle die Tab-Leiste
-        self.tabs = QTabWidget()
-        self.tabs.setTabsClosable(True)
-        self.tabs.setMovable(True)
-        self.tabs.setDocumentMode(True)
-        self.tabs.tabCloseRequested.connect(self.closeTab)
-        
-        # Erstelle die Symbolleiste
-        self.toolbar = QToolBar("Navigation")
-        self.toolbar.setMovable(False)
-        self.toolbar.setIconSize(QSize(20, 20))
-        self.toolbar.setToolButtonStyle(Qt.ToolButtonIconOnly)  # Nur Icons anzeigen
-        self.addToolBar(self.toolbar)
-        
-        # Zurück-Button
-        self.back_btn = QAction(qta.icon('fa5s.arrow-left', color='white'), "", self)
-        self.back_btn.triggered.connect(lambda: self.tabs.currentWidget().back())
-        self.toolbar.addAction(self.back_btn)
-        
-        # Vorwärts-Button
-        self.forward_btn = QAction(qta.icon('fa5s.arrow-right', color='white'), "", self)
-        self.forward_btn.triggered.connect(lambda: self.tabs.currentWidget().forward())
-        self.toolbar.addAction(self.forward_btn)
-        
-        # Neu laden Button
-        self.reload_btn = QAction(qta.icon('fa5s.sync', color='white'), "", self)
-        self.reload_btn.triggered.connect(lambda: self.tabs.currentWidget().reload())
-        self.toolbar.addAction(self.reload_btn)
-        
-        # Home-Button
-        self.home_btn = QAction(qta.icon('fa5s.home', color='white'), "", self)
-        self.home_btn.triggered.connect(self.loadNewTabPage)
-        self.toolbar.addAction(self.home_btn)
-        
-        # Neuer Tab Button
-        self.add_tab_btn = QAction(qta.icon('fa5s.plus', color='white'), "", self)
-        self.add_tab_btn.triggered.connect(lambda: self.addTab())
-        self.toolbar.addAction(self.add_tab_btn)
-        
-        # URL-Eingabefeld
-        self.url_bar = QLineEdit()
-        self.url_bar.returnPressed.connect(self.navigateToUrl)
-        self.toolbar.addWidget(self.url_bar)
-        
-        # Settings Button
-        self.settings_btn = QAction(qta.icon('fa5s.cog', color='white'), "", self)
-        self.settings_btn.triggered.connect(self.loadSettingsPage)
-        self.toolbar.addAction(self.settings_btn)
-        
-        # Füge die Tabs zum Layout hinzu
-        self.layout.addWidget(self.tabs)
-        
-        # Statusleiste
+        # Status Bar
         self.status = QStatusBar()
         self.setStatusBar(self.status)
         
-        # Erstelle einen ersten Tab
+        # Erstelle Tab-Widget
+        self.tabs = QTabWidget()
+        self.tabs.setDocumentMode(True)
+        self.tabs.setTabsClosable(True)
+        self.tabs.setMovable(True)
+        self.tabs.setElideMode(Qt.ElideRight)  # Text wird mit Ellipsis gekürzt
+        self.tabs.setUsesScrollButtons(True)  # Aktiviere Scroll-Buttons für viele Tabs
+        
+        # Tab Bar konfigurieren für dynamische Größe
+        tab_bar = self.tabs.tabBar()
+        tab_bar.setExpanding(False)  # Tabs werden nicht ausdehnen, um den Platz zu füllen
+        tab_bar.setDrawBase(True)
+        
+        # Erstelle Tab-Toolbar
+        self.tabs_toolbar = QToolBar("Tabs")
+        self.tabs_toolbar.setObjectName("tabs_toolbar")
+        self.tabs_toolbar.setMovable(False)
+        self.tabs_toolbar.setContextMenuPolicy(Qt.PreventContextMenu)
+        
+        # Füge Tabs zur Tab-Toolbar hinzu
+        self.tabs_hbox = QHBoxLayout()
+        self.tabs_hbox.setContentsMargins(0, 0, 0, 0)
+        self.tabs_hbox.addWidget(self.tabs)
+        self.tabs_toolbar_widget = QWidget()
+        self.tabs_toolbar_widget.setLayout(self.tabs_hbox)
+        self.tabs_toolbar.addWidget(self.tabs_toolbar_widget)
+        
+        # Neu Tab Button
+        self.new_tab_button = QPushButton()
+        self.new_tab_button.setIcon(qta.icon('fa5s.plus', color='white'))
+        self.new_tab_button.setObjectName("new_tab_button")
+        self.new_tab_button.setToolTip("Neuer Tab")
+        self.new_tab_button.clicked.connect(self.addTab)
+        self.tabs.setCornerWidget(self.new_tab_button, Qt.TopRightCorner)
+        
+        # Erstelle Navigations-Toolbar mit QHBoxLayout für bessere Kontrolle
+        self.nav_toolbar = QToolBar("Navigation")
+        self.nav_toolbar.setObjectName("nav_toolbar")
+        self.nav_toolbar.setMovable(False)
+        self.nav_toolbar.setContextMenuPolicy(Qt.PreventContextMenu)
+        self.nav_toolbar.setIconSize(QSize(20, 20))
+        
+        # Container für die gesamte Navigationsleiste
+        nav_container = QWidget()
+        nav_layout = QHBoxLayout(nav_container)
+        nav_layout.setContentsMargins(5, 2, 5, 2)
+        nav_layout.setSpacing(4)
+        
+        # Navigation-Buttons in einer Gruppe
+        nav_buttons = QWidget()
+        buttons_layout = QHBoxLayout(nav_buttons)
+        buttons_layout.setContentsMargins(0, 0, 0, 0)
+        buttons_layout.setSpacing(2)
+        
+        # Zurück-Button
+        back_btn = QPushButton()
+        back_btn.setIcon(qta.icon('fa5s.arrow-left', color='white'))
+        back_btn.setToolTip("Zurück")
+        back_btn.setObjectName("nav_button")
+        back_btn.clicked.connect(self.navigateBack)
+        buttons_layout.addWidget(back_btn)
+        
+        # Vorwärts-Button
+        forward_btn = QPushButton()
+        forward_btn.setIcon(qta.icon('fa5s.arrow-right', color='white'))
+        forward_btn.setToolTip("Vorwärts")
+        forward_btn.setObjectName("nav_button")
+        forward_btn.clicked.connect(self.navigateForward)
+        buttons_layout.addWidget(forward_btn)
+        
+        # Neu-laden-Button
+        reload_btn = QPushButton()
+        reload_btn.setIcon(qta.icon('fa5s.sync', color='white'))
+        reload_btn.setToolTip("Neu laden")
+        reload_btn.setObjectName("nav_button")
+        reload_btn.clicked.connect(self.reloadPage)
+        buttons_layout.addWidget(reload_btn)
+        
+        # Home-Button
+        home_btn = QPushButton()
+        home_btn.setIcon(qta.icon('fa5s.home', color='white'))
+        home_btn.setToolTip("Startseite")
+        home_btn.setObjectName("nav_button")
+        home_btn.clicked.connect(self.loadNewTabPage)
+        buttons_layout.addWidget(home_btn)
+        
+        # Füge die Navigationsbuttons zum Layout hinzu
+        nav_layout.addWidget(nav_buttons)
+        
+        # URL-Leiste
+        self.url_bar = QLineEdit()
+        self.url_bar.returnPressed.connect(self.navigateToUrl)
+        self.url_bar.setPlaceholderText("Suche oder Adresse eingeben")
+        nav_layout.addWidget(self.url_bar, 1)  # Stretch-Faktor 1 für dynamische Anpassung
+        
+        # Einstellungen-Button
+        settings_btn = QPushButton()
+        settings_btn.setIcon(qta.icon('fa5s.cog', color='white'))
+        settings_btn.setToolTip("Einstellungen")
+        settings_btn.setObjectName("nav_button")
+        settings_btn.clicked.connect(self.loadSettingsPage)
+        nav_layout.addWidget(settings_btn)
+        
+        # Füge den Container zur Toolbar hinzu
+        self.nav_toolbar.addWidget(nav_container)
+        
+        # Füge Toolbars zum Layout hinzu
+        self.layout.addWidget(self.tabs_toolbar)
+        self.layout.addWidget(self.nav_toolbar)
+        
+        # Lade Einstellungen
+        self.settings = self.loadSettings()
+        
+        # WebEngine-Profile mit benutzerdefinierten Einstellungen
+        self.setupWebEngineProfile()
+        
+        # Dunkler Modus
+        self.setDarkMode()
+        
+        # Füge ersten Tab hinzu
         self.addTab()
+        
+        # Verbinde Tab-Wechselsignal
+        self.tabs.currentChanged.connect(self.onTabChange)
+        self.tabs.tabCloseRequested.connect(self.closeTab)
+        
+        # Setze Fenstergröße und Position
+        self.resize(1000, 800)
+        self.move(100, 100)
     
     def setupWebEngineProfile(self):
         # Erstelle ein globales Profil mit optimierten Einstellungen
@@ -525,64 +632,157 @@ class Browser(QMainWindow):
     
     def setDarkMode(self):
         # Erstelle eine dunkle Palette
-        dark_palette = QPalette()
+        palette = QPalette()
+        palette.setColor(QPalette.Window, QColor(33, 33, 36))  # Dunkler für bessere Harmonie mit Titelleiste
+        palette.setColor(QPalette.WindowText, QColor(255, 255, 255))
+        palette.setColor(QPalette.Base, QColor(25, 25, 25))
+        palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+        palette.setColor(QPalette.ToolTipBase, QColor(255, 255, 255))
+        palette.setColor(QPalette.ToolTipText, QColor(255, 255, 255))
+        palette.setColor(QPalette.Text, QColor(255, 255, 255))
+        palette.setColor(QPalette.Button, QColor(53, 53, 53))
+        palette.setColor(QPalette.ButtonText, QColor(255, 255, 255))
+        palette.setColor(QPalette.BrightText, QColor(255, 0, 0))
+        palette.setColor(QPalette.Link, QColor(42, 130, 218))
+        palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
+        palette.setColor(QPalette.HighlightedText, QColor(255, 255, 255))
+        self.setPalette(palette)
         
-        # Setze Farben
-        dark_palette.setColor(QPalette.Window, QColor(53, 53, 53))
-        dark_palette.setColor(QPalette.WindowText, Qt.white)
-        dark_palette.setColor(QPalette.Base, QColor(35, 35, 35))
-        dark_palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
-        dark_palette.setColor(QPalette.ToolTipBase, Qt.white)
-        dark_palette.setColor(QPalette.ToolTipText, Qt.white)
-        dark_palette.setColor(QPalette.Text, Qt.white)
-        dark_palette.setColor(QPalette.Button, QColor(53, 53, 53))
-        dark_palette.setColor(QPalette.ButtonText, Qt.white)
-        dark_palette.setColor(QPalette.BrightText, Qt.red)
-        dark_palette.setColor(QPalette.Link, QColor(42, 130, 218))
-        dark_palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
-        dark_palette.setColor(QPalette.HighlightedText, Qt.black)
-        
-        # Wende die Palette an
-        self.setPalette(dark_palette)
-        
-        # Setze Stylesheet für weitere Anpassungen
+        # Modernes Stylesheet für den Browser
         self.setStyleSheet("""
-            QTabWidget::pane { 
-                border: 0; 
-                background: #353535;
+            QMainWindow {
+                background-color: #202124;
+                color: #ffffff;
             }
-            QTabBar::tab {
-                background: #252525; 
-                color: #FFFFFF;
-                padding: 8px 12px;
-                margin-right: 2px;
-                border-top-left-radius: 4px;
-                border-top-right-radius: 4px;
+            
+            QStatusBar {
+                background-color: #202124;
+                color: #9aa0a6;
+                border-top: 1px solid #3c4043;
             }
-            QTabBar::tab:selected {
-                background: #404040;
-            }
-            QToolBar {
-                background: #252525;
-                spacing: 3px;
+            
+            #tabs_toolbar {
+                background-color: #202124;
+                padding: 2px 0px 0px 0px;
+                min-height: 38px;
                 border: none;
-                padding: 2px;
             }
-            QLineEdit {
-                background: #404040;
-                color: white;
+            
+            #nav_toolbar {
+                background-color: #292b2f;
+                border-top: 1px solid #3c4043;
+                border-bottom: none;
+                padding: 0px;
+                min-height: 40px;
+            }
+            
+            QToolButton {
+                background-color: transparent;
+                border: none;
                 border-radius: 4px;
                 padding: 4px;
-                selection-background-color: #2a82da;
             }
-            QPushButton {
-                background: #404040;
-                color: white;
+            
+            QToolButton:hover {
+                background-color: #3c4043;
+            }
+            
+            /* Styling für die Navigationsbuttons */
+            #nav_button {
+                background-color: transparent;
+                border: none;
                 border-radius: 4px;
                 padding: 6px;
+                margin: 2px;
+                min-width: 30px;
+                max-width: 30px;
+                min-height: 30px;
+                max-height: 30px;
             }
-            QPushButton:hover {
-                background: #505050;
+            
+            #nav_button:hover {
+                background-color: #3c4043;
+            }
+            
+            #nav_button:pressed {
+                background-color: #4c4f52;
+            }
+            
+            QTabWidget::pane {
+                border: none;
+                background-color: #202124;
+            }
+            
+            QTabBar::tab {
+                background-color: #202124;
+                color: #9aa0a6;
+                border: none;
+                padding: 8px 12px;
+                min-width: 40px;
+                max-width: 200px;
+                border-top-left-radius: 8px;
+                border-top-right-radius: 8px;
+            }
+            
+            QTabBar::tab:selected {
+                background-color: #35363a;
+                color: #ffffff;
+            }
+            
+            QTabBar::tab:hover:!selected {
+                background-color: #292b2f;
+            }
+            
+            QTabBar::close-button {
+                image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iMTIiIHZpZXdCb3g9IjAgMCAxMiAxMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMiAybDggOG0wLThsLTggOCIgc3Ryb2tlPSIjOWFhMGE2IiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PC9zdmc+);
+                margin: 2px 4px 0px 4px;
+                border-radius: 2px;
+            }
+            
+            QTabBar::close-button:hover {
+                background-color: rgba(255, 255, 255, 0.1);
+            }
+            
+            QTabBar::scroller {
+                width: 20px;
+            }
+            
+            QTabBar QToolButton {
+                background-color: #202124;
+                border: none;
+            }
+            
+            QTabBar QToolButton::right-arrow {
+                image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIHZpZXdCb3g9IjAgMCAxMCAxMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMyAxTDcgNUwzIDkiIHN0cm9rZT0iI2ZmZmZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg==);
+            }
+            
+            QTabBar QToolButton::left-arrow {
+                image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIHZpZXdCb3g9IjAgMCAxMCAxMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNNyAxTDMgNUw3IDkiIHN0cm9rZT0iI2ZmZmZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg==);
+            }
+            
+            #new_tab_button {
+                background-color: transparent;
+                border: none;
+                padding: 4px 8px;
+                margin: 5px;
+                border-radius: 4px;
+            }
+            
+            #new_tab_button:hover {
+                background-color: #3c4043;
+            }
+            
+            QLineEdit {
+                background-color: #35363a;
+                color: white;
+                padding: 6px 8px;
+                border-radius: 4px;
+                border: 1px solid #5f6368;
+                selection-background-color: #1a73e8;
+            }
+            
+            QLineEdit:focus {
+                border: 1px solid #8ab4f8;
             }
         """)
     
@@ -605,27 +805,72 @@ class Browser(QMainWindow):
         browser.loadProgress.connect(lambda p: self.status.showMessage(f"Laden: {p}%"))
         browser.loadFinished.connect(lambda: self.status.showMessage("Laden abgeschlossen"))
         
+        # Füge den Browser zum Content-Container hinzu
+        self.layout.addWidget(browser)
+        
         # Füge den Tab hinzu
-        i = self.tabs.addTab(browser, "Neuer Tab")
+        i = self.tabs.addTab(QWidget(), "Neuer Tab")
         self.tabs.setCurrentIndex(i)
+        
+        # Verknüpfe Tab-Änderungen mit dem Inhalt
+        self.tabs.currentChanged.connect(self.onTabChange)
+        
+        # Speichere den Browser in einer Liste
+        self.browsers.append(browser)
+        
+        # Zeige den aktuellen Browser
+        self.onTabChange(i)
         
         # Wenn eine URL übergeben wurde, navigiere dorthin, ansonsten zur Startseite
         if qurl:
             browser.setUrl(qurl)
         else:
             self.loadNewTabPage(browser)
+            
+    def onTabChange(self, index):
+        # Verstecke alle Browser
+        if hasattr(self, 'browsers'):
+            for browser in self.browsers:
+                browser.hide()
+            
+            # Zeige den aktuellen Browser
+            if index >= 0 and index < len(self.browsers):
+                self.browsers[index].show()
+                
+                # Aktualisiere die URL-Leiste
+                current_url = self.browsers[index].url()
+                self.updateUrlBar(current_url, self.browsers[index])
     
     def closeTab(self, i):
         # Schließe den Tab, wenn mehr als ein Tab geöffnet ist
         if self.tabs.count() > 1:
+            # Entferne den Browser aus dem Layout und der Liste
+            if hasattr(self, 'browsers') and i < len(self.browsers):
+                browser = self.browsers[i]
+                self.layout.removeWidget(browser)
+                browser.deleteLater()
+                self.browsers.pop(i)
+            
+            # Entferne den Tab
             self.tabs.removeTab(i)
         else:
             # Wenn es der letzte Tab ist, öffne einen neuen
-            self.loadNewTabPage(self.tabs.widget(0))
+            if hasattr(self, 'browsers') and len(self.browsers) > 0:
+                browser = self.browsers[0]
+                self.loadNewTabPage(browser)
     
     def updateUrlBar(self, q, browser=None):
         # Aktualisiere die URL-Leiste
-        if browser != self.tabs.currentWidget():
+        if not hasattr(self, 'browsers') or not browser:
+            return
+            
+        # Finde den aktuellen Browser-Index
+        current_index = self.tabs.currentIndex()
+        if current_index < 0 or current_index >= len(self.browsers):
+            return
+            
+        current_browser = self.browsers[current_index]
+        if browser != current_browser:
             return
         
         # Setze den Text in der URL-Leiste - nur die Domain anzeigen
@@ -643,73 +888,67 @@ class Browser(QMainWindow):
         else:
             self.tabs.setTabText(self.tabs.currentIndex(), "Unbenannt")
     
-    def navigateToUrl(self):
-        # Hole die URL aus der URL-Leiste
-        url_text = self.url_bar.text().strip()
-        
-        # Überprüfe, ob es eine spezielle vortex:// URL ist
-        if url_text.startswith("vortex://"):
-            q = QUrl(url_text)
-            self.tabs.currentWidget().setUrl(q)
-            return
-        
-        # Überprüfe, ob es eine gültige URL ist
-        if "." in url_text and not " " in url_text:
-            # Füge http:// hinzu, falls keine Scheme vorhanden ist
-            if not any(url_text.startswith(prefix) for prefix in ["http://", "https://", "file://"]):
-                url_text = "http://" + url_text
-            
-            q = QUrl(url_text)
-            self.tabs.currentWidget().setUrl(q)
+    def navigateToUrl(self, qurl=None):
+        # Überprüfe, ob eine URL übergeben wurde oder aus der URL-Leiste geholt werden soll
+        if qurl is not None:
+            url = qurl
         else:
-            # Verwende die ausgewählte Suchmaschine für die Suche
-            self.performSearch(url_text)
-    
-    def performSearch(self, search_term):
-        engine_name = self.settings.get("search_engine", "Google")
-        search_url = SEARCH_ENGINES.get(engine_name, SEARCH_ENGINES["Google"])
+            # Hole die URL aus der URL-Leiste
+            url_text = self.url_bar.text().strip()
+            
+            # Wenn die URL leer ist, nichts tun
+            if not url_text:
+                return
+                
+            # Prüfe, ob es sich um eine Suchanfrage oder eine URL handelt
+            if not url_text.startswith(('http://', 'https://', 'file://')) and not '.' in url_text:
+                # Es ist eine Suchanfrage, verwende die konfigurierte Suchmaschine
+                engine = self.settings.get("search_engine", "Google")
+                search_url = SEARCH_ENGINES.get(engine, SEARCH_ENGINES["Google"])
+                url = QUrl(search_url.replace("{query}", url_text))
+            else:
+                # Es ist eine URL
+                if not url_text.startswith(('http://', 'https://', 'file://')):
+                    url_text = 'http://' + url_text
+                url = QUrl(url_text)
         
-        # Ersetze {} mit dem Suchbegriff
-        search_url = search_url.format(search_term)
-        
-        # Navigiere zur Suchmaschine mit dem Suchbegriff
-        self.tabs.currentWidget().setUrl(QUrl(search_url))
+        # Lade die URL in den aktuellen Browser
+        if hasattr(self, 'browsers') and self.tabs.currentIndex() >= 0 and self.tabs.currentIndex() < len(self.browsers):
+            self.browsers[self.tabs.currentIndex()].setUrl(url)
     
     def loadNewTabPage(self, browser=None):
-        # Verwende den aktuellen Tab, falls keiner angegeben wurde
-        if browser is None:
-            browser = self.tabs.currentWidget()
-        
-        # Erstelle die Liste der angepinnten Seiten
-        pinned_sites_html = ""
-        pinned_sites = self.settings.get("pinned_sites", DEFAULT_PINNED_SITES)
-        
-        for site in pinned_sites:
-            title = site.get("title", "")
-            url = site.get("url", "")
-            icon = site.get("icon", "fa5s.globe")
+        # Startseite oder neue Tab-Seite laden
+        if not browser and hasattr(self, 'browsers') and self.tabs.currentIndex() >= 0 and self.tabs.currentIndex() < len(self.browsers):
+            browser = self.browsers[self.tabs.currentIndex()]
             
-            pinned_sites_html += f"""
-            <a href="{url}" class="site-tile">
-                <div class="site-icon"><i class="{icon}"></i></div>
-                <div class="site-title">{title}</div>
-                <button class="unpin" onclick="event.preventDefault(); unpinSite('{url}');">×</button>
-            </a>
-            """
-        
-        # Fülle das HTML-Template
-        current_engine = self.settings.get("search_engine", "Google")
-        html = NEW_TAB_HTML.format(current_engine=current_engine, pinned_sites=pinned_sites_html)
-        
-        # Lade die New-Tab-Seite
-        browser.setHtml(html, QUrl("vortex://new-tab"))
-        
-        # Setze die URL-Bar
-        self.url_bar.setText("vortex://new-tab")
-        
-        # Aktualisiere den Tab-Titel
-        self.tabs.setTabText(self.tabs.currentIndex(), "Neue Registerkarte")
+        if browser:
+            # Erstelle HTML für die neue Tab-Seite mit Favoriten
+            html = NEW_TAB_HTML.format(
+                pinned_sites=self.generatePinnedSites(),
+                search_input_placeholder=f"Mit {self.settings.get('search_engine', 'Google')} suchen oder URL eingeben"
+            )
+            browser.setHtml(html, QUrl("vortex://newtab"))
+            self.tabs.setTabText(self.tabs.currentIndex(), "Neuer Tab")
+            self.url_bar.setText("")
 
+    def generatePinnedSites(self):
+        # Generiere die HTML für die angepinnten Seiten
+        sites_html = ""
+        for site in self.settings.get("pinned_sites", DEFAULT_PINNED_SITES):
+            icon_name = self.getFaviconForDomain(site["url"])
+            sites_html += f"""
+            <div class="site-tile">
+                <a href="{site['url']}" class="site-link">
+                    <div class="site-icon">
+                        <i class="{icon_name}"></i>
+                    </div>
+                    <div class="site-title">{site['title']}</div>
+                </a>
+                <a href="vortex://unpin-site?url={site['url']}" class="unpin-button">×</a>
+            </div>
+            """
+        return sites_html
+        
     def pinSite(self, title, url):
         if not title or not url:
             return
@@ -741,17 +980,9 @@ class Browser(QMainWindow):
         self.saveSettings()
     
     def unpinSite(self, url):
-        if not url:
-            return
-        
-        # Entferne die Seite aus den angepinnten Seiten
+        # Eine Seite aus den Favoriten entfernen
         pinned_sites = self.settings.get("pinned_sites", DEFAULT_PINNED_SITES)
-        
-        # Filtere die zu entfernende Seite heraus
-        pinned_sites = [site for site in pinned_sites if site.get("url") != url]
-        
-        # Aktualisiere die Einstellungen
-        self.settings["pinned_sites"] = pinned_sites
+        self.settings["pinned_sites"] = [site for site in pinned_sites if site["url"] != url]
         self.saveSettings()
     
     def getFaviconForDomain(self, url):
@@ -791,22 +1022,31 @@ class Browser(QMainWindow):
             return "fa5s.globe"
 
     def loadSettings(self):
+        # Einstellungsdatei im Benutzerverzeichnis
+        self.settings_file = os.path.join(os.path.expanduser("~"), ".vortex_settings.json")
+        
+        # Versuche, vorhandene Einstellungen zu laden
         if os.path.exists(self.settings_file):
             try:
                 with open(self.settings_file, 'r') as f:
-                    self.settings = json.load(f)
-            except:
-                self.settings = {
-                    "search_engine": "Google",
-                    "pinned_sites": DEFAULT_PINNED_SITES
-                }
-        else:
-            self.settings = {
-                "search_engine": "Google",
-                "pinned_sites": DEFAULT_PINNED_SITES
-            }
-
+                    return json.load(f)
+            except Exception as e:
+                print(f"Fehler beim Laden der Einstellungen: {e}")
+                
+        # Standard-Einstellungen zurückgeben, wenn keine Datei existiert oder ein Fehler auftritt
+        return {
+            "search_engine": "Google",
+            "pinned_sites": DEFAULT_PINNED_SITES
+        }
+        
     def loadSettingsPage(self):
+        # Prüfe, ob Browser verfügbar sind
+        if not hasattr(self, 'browsers') or self.tabs.currentIndex() < 0 or self.tabs.currentIndex() >= len(self.browsers):
+            return
+            
+        # Hole den aktuellen Browser
+        current_browser = self.browsers[self.tabs.currentIndex()]
+        
         # Erstelle die Optionen für die Suchmaschinen
         options = ""
         current_engine = self.settings.get("search_engine", "Google")
@@ -819,8 +1059,7 @@ class Browser(QMainWindow):
         html = SETTINGS_HTML.format(options=options, current=current_engine)
         
         # Lade die Einstellungs-Seite
-        current_tab = self.tabs.currentWidget()
-        current_tab.setHtml(html, QUrl("vortex://settings"))
+        current_browser.setHtml(html, QUrl("vortex://settings"))
         
         # Setze die URL-Bar
         self.url_bar.setText("vortex://settings")
@@ -834,11 +1073,68 @@ class Browser(QMainWindow):
             self.settings.update(new_settings)
         
         # Speichere die Einstellungen in der Datei
-        with open(self.settings_file, 'w') as f:
-            json.dump(self.settings, f)
-        
-        # Zeige eine Bestätigung
-        self.status.showMessage("Einstellungen gespeichert", 3000)
+        try:
+            with open(self.settings_file, 'w') as f:
+                json.dump(self.settings, f)
+            self.status.showMessage("Einstellungen gespeichert", 3000)
+        except Exception as e:
+            print(f"Fehler beim Speichern der Einstellungen: {e}")
+            self.status.showMessage(f"Fehler beim Speichern: {e}", 3000)
+
+    def navigateBack(self):
+        if hasattr(self, 'browsers') and self.tabs.currentIndex() >= 0 and self.tabs.currentIndex() < len(self.browsers):
+            self.browsers[self.tabs.currentIndex()].back()
+    
+    def navigateForward(self):
+        if hasattr(self, 'browsers') and self.tabs.currentIndex() >= 0 and self.tabs.currentIndex() < len(self.browsers):
+            self.browsers[self.tabs.currentIndex()].forward()
+    
+    def reloadPage(self):
+        if hasattr(self, 'browsers') and self.tabs.currentIndex() >= 0 and self.tabs.currentIndex() < len(self.browsers):
+            self.browsers[self.tabs.currentIndex()].reload()
+
+    def enableWindowsDarkMode(self):
+        """Aktiviert den Dunkelmodus für die Windows-Titelleiste"""
+        try:
+            # Windows 10 1809 oder höher unterstützt DWMWA_USE_IMMERSIVE_DARK_MODE = 20
+            # Windows 10 (vor 1903) verwendet DWMWA_USE_IMMERSIVE_DARK_MODE = 19
+            # Probiere beide Werte
+            
+            hwnd = int(self.winId())
+            
+            # Windows 10 1903+ verwenden Wert 20
+            DWMWA_USE_IMMERSIVE_DARK_MODE = 20
+            dark_int = 1  # True für Dark Mode
+            
+            try:
+                # ctypes verwenden, um DwmSetWindowAttribute aufzurufen
+                ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                    hwnd,
+                    DWMWA_USE_IMMERSIVE_DARK_MODE,
+                    ctypes.byref(ctypes.c_int(dark_int)),
+                    ctypes.sizeof(ctypes.c_int)
+                )
+            except:
+                # Für ältere Windows 10 Versionen Wert 19 probieren
+                DWMWA_USE_IMMERSIVE_DARK_MODE = 19
+                ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                    hwnd,
+                    DWMWA_USE_IMMERSIVE_DARK_MODE,
+                    ctypes.byref(ctypes.c_int(dark_int)),
+                    ctypes.sizeof(ctypes.c_int)
+                )
+            
+            # Setze App-ID für bessere Integration mit Windows
+            QtWin.setCurrentProcessExplicitAppUserModelID("Vortex.Browser")
+            
+            # Stelle sicher, dass die Fensterdekoration im dunklen Stil dargestellt wird
+            self.setAttribute(Qt.WA_TranslucentBackground, False)
+            
+            print("Dark Mode für Titelleiste aktiviert")
+            
+        except Exception as e:
+            print(f"Fehler bei der Aktivierung des Dark Mode: {e}")
+            # Wenn Dark Mode nicht aktiviert werden kann, fahre trotzdem fort
 
 if __name__ == "__main__":
     # Erstelle die Anwendung
