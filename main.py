@@ -2,7 +2,7 @@ import sys
 from PyQt5.QtCore import QUrl, Qt, QSize
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QTabWidget, 
                            QToolBar, QLineEdit, QPushButton, QVBoxLayout, 
-                           QWidget, QHBoxLayout, QMenu, QStatusBar, QAction, QStyle)
+                           QWidget, QHBoxLayout, QMenu, QStatusBar, QAction, QStyle, QTabBar, QLabel)
 from PyQt5.QtGui import QIcon, QPalette, QColor
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineSettings, QWebEngineProfile
 from PyQt5.QtWebEngineCore import QWebEngineUrlRequestInterceptor, QWebEngineUrlRequestInfo
@@ -416,8 +416,13 @@ class Browser(QMainWindow):
         
         # Fenster-Eigenschaften
         self.setWindowTitle("Vortex Browser")
-        # Entferne frameless window hint falls vorhanden
-        self.setWindowFlags(Qt.Window)  # Standard-Fenster mit Windows-Buttons
+        
+        # Setze das Programm-Icon
+        icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "vortex-icon.png")
+        self.setWindowIcon(QIcon(icon_path))
+        
+        # Layout für die Hauptfensterelemente
+        self.layout = QVBoxLayout()
         
         # Windows-Darkmode für Titelleiste aktivieren
         if sys.platform == 'win32':
@@ -437,29 +442,18 @@ class Browser(QMainWindow):
         # Erstelle Tab-Widget
         self.tabs = QTabWidget()
         self.tabs.setDocumentMode(True)
-        self.tabs.setTabsClosable(True)
+        self.tabs.setTabsClosable(False)  # Wir implementieren unsere eigenen Close-Buttons
         self.tabs.setMovable(True)
         self.tabs.setElideMode(Qt.ElideRight)  # Text wird mit Ellipsis gekürzt
         self.tabs.setUsesScrollButtons(True)  # Aktiviere Scroll-Buttons für viele Tabs
         
-        # Tab Bar konfigurieren für dynamische Größe
+        # Tab Bar konfigurieren für linksbündige Anordnung
         tab_bar = self.tabs.tabBar()
         tab_bar.setExpanding(False)  # Tabs werden nicht ausdehnen, um den Platz zu füllen
         tab_bar.setDrawBase(True)
-        
-        # Erstelle Tab-Toolbar
-        self.tabs_toolbar = QToolBar("Tabs")
-        self.tabs_toolbar.setObjectName("tabs_toolbar")
-        self.tabs_toolbar.setMovable(False)
-        self.tabs_toolbar.setContextMenuPolicy(Qt.PreventContextMenu)
-        
-        # Füge Tabs zur Tab-Toolbar hinzu
-        self.tabs_hbox = QHBoxLayout()
-        self.tabs_hbox.setContentsMargins(0, 0, 0, 0)
-        self.tabs_hbox.addWidget(self.tabs)
-        self.tabs_toolbar_widget = QWidget()
-        self.tabs_toolbar_widget.setLayout(self.tabs_hbox)
-        self.tabs_toolbar.addWidget(self.tabs_toolbar_widget)
+        tab_bar.setUsesScrollButtons(True)
+        tab_bar.setDocumentMode(True)
+        tab_bar.setElideMode(Qt.ElideRight)  # Text mit Ellipsis am Ende kürzen
         
         # Neu Tab Button
         self.new_tab_button = QPushButton()
@@ -474,7 +468,7 @@ class Browser(QMainWindow):
         self.nav_toolbar.setObjectName("nav_toolbar")
         self.nav_toolbar.setMovable(False)
         self.nav_toolbar.setContextMenuPolicy(Qt.PreventContextMenu)
-        self.nav_toolbar.setIconSize(QSize(20, 20))
+        self.nav_toolbar.setIconSize(QSize(18, 18))
         
         # Container für die gesamte Navigationsleiste
         nav_container = QWidget()
@@ -540,7 +534,29 @@ class Browser(QMainWindow):
         # Füge den Container zur Toolbar hinzu
         self.nav_toolbar.addWidget(nav_container)
         
-        # Füge Toolbars zum Layout hinzu
+        # Füge die Navigationsleiste zum Layout hinzu
+        self.layout.addWidget(self.nav_toolbar)
+        
+        # Entferne die Tabs aus der Navigationsleiste
+        nav_layout.removeWidget(self.tabs)
+
+        # Erstelle Tab-Toolbar
+        self.tabs_toolbar = QToolBar("Tabs")
+        self.tabs_toolbar.setObjectName("tabs_toolbar")
+        self.tabs_toolbar.setMovable(False)
+        self.tabs_toolbar.setContextMenuPolicy(Qt.PreventContextMenu)
+        
+        # Füge Tabs zur Tab-Toolbar hinzu und setze Ausrichtung linksbündig
+        self.tabs_hbox = QHBoxLayout()
+        self.tabs_hbox.setContentsMargins(0, 0, 0, 0)
+        self.tabs_hbox.addWidget(self.tabs)
+        self.tabs_hbox.addStretch(1)  # Fügt Stretchfaktor hinzu, damit die Tabs linksbündig sind
+        self.tabs_toolbar_widget = QWidget()
+        self.tabs_toolbar_widget.setLayout(self.tabs_hbox)
+        self.tabs_toolbar.addWidget(self.tabs_toolbar_widget)
+
+        # Füge die Tab-Toolbar zum Layout hinzu (vor der Navigationsleiste)
+        self.layout.removeWidget(self.nav_toolbar)
         self.layout.addWidget(self.tabs_toolbar)
         self.layout.addWidget(self.nav_toolbar)
         
@@ -663,70 +679,45 @@ class Browser(QMainWindow):
             
             #tabs_toolbar {
                 background-color: #202124;
-                padding: 2px 0px 0px 0px;
-                min-height: 38px;
+                padding: 0px;
+                margin: 0px 0px 0px 0px;
+                min-height: 32px;
+                max-height: 32px;
                 border: none;
             }
             
             #nav_toolbar {
                 background-color: #292b2f;
-                border-top: 1px solid #3c4043;
+                border-top: none;
                 border-bottom: none;
                 padding: 0px;
                 min-height: 40px;
+                margin-top: 0px;
             }
             
-            QToolButton {
-                background-color: transparent;
-                border: none;
-                border-radius: 4px;
-                padding: 4px;
-            }
-            
-            QToolButton:hover {
-                background-color: #3c4043;
-            }
-            
-            /* Styling für die Navigationsbuttons */
-            #nav_button {
-                background-color: transparent;
-                border: none;
-                border-radius: 4px;
-                padding: 6px;
-                margin: 2px;
-                min-width: 30px;
-                max-width: 30px;
-                min-height: 30px;
-                max-height: 30px;
-            }
-            
-            #nav_button:hover {
-                background-color: #3c4043;
-            }
-            
-            #nav_button:pressed {
-                background-color: #4c4f52;
-            }
-            
-            QTabWidget::pane {
-                border: none;
-                background-color: #202124;
+            QTabBar {
+                alignment: left;
+                margin-bottom: 0px;
+                margin-left: 4px;
             }
             
             QTabBar::tab {
                 background-color: #202124;
                 color: #9aa0a6;
                 border: none;
-                padding: 8px 12px;
+                padding: 5px 12px 9px 12px;
                 min-width: 40px;
                 max-width: 200px;
                 border-top-left-radius: 8px;
                 border-top-right-radius: 8px;
+                margin-bottom: 0px;
+                margin-top: 1px;
             }
             
             QTabBar::tab:selected {
                 background-color: #35363a;
                 color: #ffffff;
+                border-bottom: 2px solid #8ab4f8;
             }
             
             QTabBar::tab:hover:!selected {
@@ -760,6 +751,38 @@ class Browser(QMainWindow):
                 image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIHZpZXdCb3g9IjAgMCAxMCAxMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNNyAxTDMgNUw3IDkiIHN0cm9rZT0iI2ZmZmZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg==);
             }
             
+            QToolButton {
+                background-color: transparent;
+                border: none;
+                border-radius: 4px;
+                padding: 4px;
+            }
+            
+            QToolButton:hover {
+                background-color: #3c4043;
+            }
+            
+            /* Styling für die Navigationsbuttons */
+            #nav_button {
+                background-color: transparent;
+                border: none;
+                border-radius: 4px;
+                padding: 4px;
+                margin: 1px;
+                min-width: 26px;
+                max-width: 26px;
+                min-height: 26px;
+                max-height: 26px;
+            }
+            
+            #nav_button:hover {
+                background-color: #3c4043;
+            }
+            
+            #nav_button:pressed {
+                background-color: #4c4f52;
+            }
+            
             #new_tab_button {
                 background-color: transparent;
                 border: none;
@@ -783,6 +806,28 @@ class Browser(QMainWindow):
             
             QLineEdit:focus {
                 border: 1px solid #8ab4f8;
+            }
+            
+            #tab_close_button {
+                background-color: transparent;
+                border: none;
+                border-radius: 8px;
+                padding: 0px;
+                margin: 0px;
+            }
+            
+            #tab_close_button:hover {
+                background-color: #494a4e;
+            }
+            
+            #tab_close_button:pressed {
+                background-color: #5f6064;
+            }
+            
+            #tab_label {
+                color: #ffffff;
+                margin: 0px;
+                padding: 0px;
             }
         """)
     
@@ -821,12 +866,17 @@ class Browser(QMainWindow):
         # Zeige den aktuellen Browser
         self.onTabChange(i)
         
+        # Füge den Close-Button hinzu
+        self.addCloseButtonToTab(i)
+        
         # Wenn eine URL übergeben wurde, navigiere dorthin, ansonsten zur Startseite
         if qurl:
             browser.setUrl(qurl)
         else:
             self.loadNewTabPage(browser)
             
+        return i, browser
+    
     def onTabChange(self, index):
         # Verstecke alle Browser
         if hasattr(self, 'browsers'):
@@ -844,7 +894,7 @@ class Browser(QMainWindow):
     def closeTab(self, i):
         # Schließe den Tab, wenn mehr als ein Tab geöffnet ist
         if self.tabs.count() > 1:
-            # Entferne den Browser aus dem Layout und der Liste
+            # Entferne den Browser aus der Liste
             if hasattr(self, 'browsers') and i < len(self.browsers):
                 browser = self.browsers[i]
                 self.layout.removeWidget(browser)
@@ -853,8 +903,11 @@ class Browser(QMainWindow):
             
             # Entferne den Tab
             self.tabs.removeTab(i)
+            
+            # Aktualisiere die Tab-Indizes in den Close-Buttons
+            self.updateTabCloseButtons()
         else:
-            # Wenn es der letzte Tab ist, öffne einen neuen
+            # Lade eine neue Tab-Seite, wenn es der letzte Tab ist
             if hasattr(self, 'browsers') and len(self.browsers) > 0:
                 browser = self.browsers[0]
                 self.loadNewTabPage(browser)
@@ -882,11 +935,21 @@ class Browser(QMainWindow):
             self.url_bar.setText(url_text)
     
     def updateTabTitle(self, title):
-        # Aktualisiere den Tab-Titel mit dem HTML-Titel
-        if title:
-            self.tabs.setTabText(self.tabs.currentIndex(), title)
-        else:
-            self.tabs.setTabText(self.tabs.currentIndex(), "Unbenannt")
+        # Aktualisiere den Tab-Titel
+        current_index = self.tabs.currentIndex()
+        
+        # Setze einen Standardtitel, wenn keiner vorhanden ist
+        if not title:
+            title = "Unbenannt"
+        
+        # Aktualisiere den Tab-Titel (wird von addCloseButtonToTab verwendet)
+        self.tabs.setTabText(current_index, title)
+        
+        # Aktualisiere den Close-Button und den Titel
+        self.addCloseButtonToTab(current_index)
+        
+        # Aktualisiere den Fenstertitel
+        self.setWindowTitle(f"{title} - Vortex Browser")
     
     def navigateToUrl(self, qurl=None):
         # Überprüfe, ob eine URL übergeben wurde oder aus der URL-Leiste geholt werden soll
@@ -1136,11 +1199,52 @@ class Browser(QMainWindow):
             print(f"Fehler bei der Aktivierung des Dark Mode: {e}")
             # Wenn Dark Mode nicht aktiviert werden kann, fahre trotzdem fort
 
+    # Funktion zum Hinzufügen des Close-Buttons zu einem Tab
+    def addCloseButtonToTab(self, index):
+        # Erstelle den Close-Button
+        close_button = QPushButton()
+        close_button.setIcon(qta.icon('fa5s.times', color='#9aa0a6'))
+        close_button.setObjectName("tab_close_button")
+        close_button.setFixedSize(16, 16)
+        close_button.setToolTip("Tab schließen")
+        close_button.setCursor(Qt.ArrowCursor)
+        
+        # Verbinde den Button mit der closeTab-Methode
+        close_button.clicked.connect(lambda: self.closeTab(index))
+        
+        # Erstelle ein Widget als Container für den Tab-Titel und den Close-Button
+        tab_widget = QWidget()
+        layout = QHBoxLayout(tab_widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(5)
+        
+        # Füge den Tab-Titel hinzu
+        label = QLabel(self.tabs.tabText(index))
+        label.setObjectName("tab_label")
+        layout.addWidget(label)
+        
+        # Füge den Close-Button hinzu
+        layout.addWidget(close_button)
+        
+        # Setze das Widget als Tab-Widget
+        self.tabs.setTabText(index, "")
+        self.tabs.tabBar().setTabButton(index, QTabBar.RightSide, tab_widget)
+
+    # Füge eine neue Methode hinzu, um die Tab-Indizes in den Close-Buttons zu aktualisieren
+    def updateTabCloseButtons(self):
+        # Aktualisiere alle Tab-Close-Buttons mit den richtigen Indizes
+        for i in range(self.tabs.count()):
+            self.addCloseButtonToTab(i)
+
 if __name__ == "__main__":
     # Erstelle die Anwendung
     app = QApplication(sys.argv)
     
-    # Erstelle das Browserfenster
+    # Setze das Icon für die gesamte Anwendung
+    icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "vortex-icon.png")
+    app.setWindowIcon(QIcon(icon_path))
+    
+    # Erstelle das Hauptfenster
     window = Browser()
     window.show()
     
