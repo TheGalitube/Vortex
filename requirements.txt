@@ -1,2 +1,3 @@
 PyQt5==5.15.9
 PyQtWebEngine==5.15.7 
+qtawesome==1.2.3
